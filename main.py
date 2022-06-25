@@ -27,12 +27,49 @@ def refresh():
 
 
 def add_product():
+    c = db.cursor()
     try:
-        db.execute("INSERT INTO products VALUES(?, ?, ?, ?, ?)", (product_entry.get(), scent_entry.get(),
-                                                                  decorator_entry.get(), quantity_entry.get(),
-                                                                  price_entry.get()))
-        db.commit()
-        refresh()
+        if product_entry.get().isalpha() and len(product_entry.get()) > 0:
+            if scent_entry.get().isalpha() and len(scent_entry.get()) > 0:
+                if quantity_entry.get().isnumeric() and len(quantity_entry.get()) > 0:
+                    if price_entry.get().isnumeric() and len(quantity_entry.get()) > 0:
+
+                        exists = c.execute("SELECT product FROM products WHERE (product=? and scent=? and decoration=? and price=?)",
+                                  (product_entry.get(), scent_entry.get(), decorator_entry.get(), price_entry.get())).fetchall()
+                        if not exists:
+                            db.execute("INSERT INTO products VALUES(?, ?, ?, ?, ?)",
+                                       (str(product_entry.get()), str(scent_entry.get()),
+                                        str(decorator_entry.get()), float(quantity_entry.get()),
+                                        float(price_entry.get())))
+                            db.commit()
+                            c.close()
+                            refresh()
+                            message_label.config(
+                                text="{} {} {} {} {} added".format(product_entry.get(), scent_entry.get(),
+                                                                   decorator_entry.get(), quantity_entry.get(),
+                                                                   price_entry.get()))
+                        else:
+                            fetch = c.execute("SELECT quantity FROM products WHERE (product=? and scent=? and decoration=? and price=?)", (product_entry.get(), scent_entry.get(), decorator_entry.get(),price_entry.get())).fetchone()
+                            orig_qty = fetch[0]
+                            add_qty = float(quantity_entry.get())
+                            new_qty = orig_qty + add_qty
+                            print(new_qty)
+                            print(fetch)
+                            update = "UPDATE products SET quantity=? WHERE product=? and scent=? and decoration=? and price=?"
+
+                            c.execute(update, (new_qty, product_entry.get(), scent_entry.get(), decorator_entry.get(),price_entry.get()))
+                            c.close()
+                            refresh()
+
+                            message_label.config(text="Field updated")
+                    else:
+                        message_label.config(text="Price must be a decimal number and cannot be empty")
+                else:
+                    message_label.config(text="Price must be a decimal number and cannot be empty")
+            else:
+                message_label.config(text="Scent name must be a word and cannot be empty")
+        else:
+            message_label.config(text="Product name must be a word and cannot be empty")
     except Exception as e:
         message_label.config(text="Data entry failed {}".format(e))
         db.rollback()
@@ -41,10 +78,11 @@ def add_product():
         pass
 
 
+# TODO Get the delete function to actually remove items from database
 def delete_product():
     try:
-
-        db.execute("DELETE FROM products WHERE products.product=?", (item_selected,))
+        line = tree.selection()
+        db.execute("DELETE FROM products WHERE products.product=?", (line,))
         message_label.config(text="Entry deleted")
         db.commit()
         refresh()
@@ -91,12 +129,7 @@ tree.heading('price', text='Price')
 for product in db.execute("SELECT * FROM products ORDER BY products.product"):
     tree.insert('', tk.END, values=product)
 
-# TODO data validation on entry fields
-# TODO data validation on database entry
-# TODO add data remove button and feature
-
-
-tree.bind('<<TreeviewSelect>>', item_selected)
+tree.bind('<<TreeviewSelect>>')
 
 tree.grid(row=5, column=0, sticky='nsew', rowspan=2, columnspan=4, padx=(30, 0))
 
