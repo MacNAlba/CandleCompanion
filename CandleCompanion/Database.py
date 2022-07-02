@@ -1,5 +1,4 @@
 import tkinter as tk
-
 import __main__ as main
 
 
@@ -8,11 +7,9 @@ class Database(object):
         self.db = db
         self.cur = cur
 
-    def create_table(self):
         try:
-            self.db.connect("db.sqlite")
             self.db.execute("CREATE TABLE IF NOT EXISTS materials (ingredient TEXT NOT NULL COLLATE NOCASE, quantity "
-                            "INTEGER NOT NULL, cost REAL NOT NULL)")
+                            "REAL NOT NULL, cost REAL NOT NULL)")
             self.db.execute("CREATE TABLE IF NOT EXISTS products (product TEXT NOT NULL COLLATE NOCASE, size REAL "
                             "NOT NULL, scent TEXT NOT NULL COLLATE NOCASE, decoration_1 TEXT COLLATE NOCASE, "
                             "decoration_2 TEXT COLLATE NOCASE, quantity INTEGER NOT NULL, price REAL NOT NULL)")
@@ -20,7 +17,7 @@ class Database(object):
                             "REAL NOT NULL, scent_amount REAL NOT NULL)")
         except Exception as DatabaseError:
             print("Database failed to initialise {}".format(DatabaseError))
-        exit()
+            exit()
 
     def refresh_materials(self):
         for item in main.materials_tree.get_children():
@@ -97,9 +94,8 @@ class Database(object):
             if str(main.p_product_entry.get()).isalpha() and len(main.p_product_entry.get()) > 0:
                 if float(main.p_size_entry.get()):
                     if str(main.p_scent_entry.get()).isalpha() and len(main.p_scent_entry.get()) > 0:
-                        if int(main.p_quantity_entry.get()) and len(main.p_quantity_entry.get()) > 0:
+                        if float(main.p_quantity_entry.get()) and len(main.p_quantity_entry.get()) > 0:
                             if float(main.p_price_entry.get()) and len(main.p_price_entry.get()) > 0:
-
                                 exists = self.cur.execute(
                                     "SELECT product FROM products WHERE ("
                                     "product=? and size=? and scent=? and decoration_1=? and decoration_2=? and "
@@ -107,6 +103,7 @@ class Database(object):
                                     (main.p_product_entry.get(), main.p_size_entry.get(), main.p_scent_entry.get(),
                                      main.p_decorator_1_entry.get(), main.p_decorator_2_entry.get(),
                                      main.p_price_entry.get())).fetchall()
+                                # If product, exists, increase quantity
                                 if not exists:
                                     self.db.execute("INSERT INTO products VALUES(?, ?, ?, ?, ?, ?, ?)",
                                                     (str(main.p_product_entry.get()), str(main.p_size_entry.get()),
@@ -124,6 +121,7 @@ class Database(object):
                                             main.p_decorator_1_entry.get().lower(),
                                             main.p_decorator_2_entry.get().lower(),
                                             main.p_price_entry.get().lower()))
+                                # Else add product
                                 else:
                                     fetch = self.cur.execute(
                                         "SELECT quantity FROM products WHERE (product=? and size=? and scent=? "
@@ -144,6 +142,38 @@ class Database(object):
                                     self.refresh_products()
                                     main.p_message_label.config(
                                         text="{} quantity increased to {}".format(main.p_product_entry.get(), new_qty))
+                                # Reduce ingredients by new product size according to recipe
+                                product = main.p_product_entry.get()
+                                select = self.cur.execute("SELECT * FROM recipes").fetchall()
+                                wax_amount = main.p_size_entry.get()
+                                scent_amount = 0
+                                amount = float(main.p_quantity_entry.get())
+                                ingr_wax = 0
+                                ingr_scent = 0
+                                scent = main.p_scent_entry.get()
+                                for row in select:
+                                    if row[0] == str(product):
+                                        scent_amount = select[0][2]
+                                select = self.cur.execute("SELECT * FROM materials").fetchall()
+                                for row in select:
+                                    if row[0] == 'wax':
+                                        ingr_wax = row[1]
+                                for row in select:
+                                    if row[0] == scent:
+                                        ingr_scent = row[1]
+                                new_wax = float(ingr_wax) - (float(wax_amount) * amount)
+                                new_scent = float(ingr_scent) - (float(scent_amount) * amount)
+                                print(new_scent, new_wax)
+                                update_wax = """UPDATE materials SET quantity=? WHERE ingredient='wax'"""
+                                self.cur.execute(update_wax, (new_wax,))
+                                update_scent = """UPDATE materials SET quantity=? WHERE ingredient=?"""
+                                self.cur.execute(update_scent, (new_scent, scent))
+                                self.db.commit()
+                                self.refresh_products()
+                                self.refresh_materials()
+                                main.p_message_label.config(
+                                    text="Wax quantity reduced to {}\n{} scent quantity reduced to{}"
+                                    .format(new_wax, scent, new_scent))
                             else:
                                 main.p_message_label.config(text="Price must be a decimal number and cannot be empty")
                         else:
@@ -250,3 +280,5 @@ class Database(object):
             main.m_message_label.config(text="Failed to remove field {}".format(DeleteError))
             self.db.rollback()
             self.refresh_recipes()
+
+
