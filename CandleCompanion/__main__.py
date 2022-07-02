@@ -5,10 +5,41 @@ from tkinter import ttk
 from PIL import ImageTk, Image
 import Database as Database
 
+db = sqlite3.connect("db.sqlite")
+cur = db.cursor()
+datab = Database.Database(db, cur)
 
 
 
 # ==== Functions ========================================================================
+def tree(frame, selection, table, column, *args):
+    try:
+        columns = (args)
+        tree = ttk.Treeview(frame, columns=columns, show='headings')
+        tree.pack(side=tk.LEFT)
+        for i in args:
+            for j in range(0, len(i)):
+                if '_' in i[j]:
+                    i[j].replace('_', ' ')
+                    tree.heading(i, text='{}'.format(i))
+                    tree.column(i, minwidth=5, width=100)
+                else:
+                    tree.heading(i, text='{}'.format(i))
+                    tree.column(i, minwidth=5, width=100)
+
+        for value in datab.db.execute("SELECT * FROM {} ORDER BY {}".format(table, column)):
+            tree.insert('', tk.END, values=value)
+        tree.bind('<<TreeviewSelect>>', selection, )
+
+        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill='y')
+        return tree
+    except Exception as TreeViewError:
+        error(TreeViewError)
+        print("TreeView failed to initialise {}".format(TreeViewError))
+
+
 def get_materials_selection(event):
     try:
         curItem = materials_tree.focus()
@@ -202,40 +233,7 @@ r_bottom_bottom_frame = frame(r_bottom_frame, tk.BOTTOM)
 r_left_frame = frame(r_top_bottom_frame, tk.LEFT)
 r_right_frame = frame(r_top_bottom_frame, tk.RIGHT)
 
-
-db = sqlite3.connect("db.sqlite")
-cur = db.cursor()
-datab = Database.Database(db, cur)
-# ==== TreeView ==========================================================================
-# ==== Materials ====
-def tree(frame, selection, table, column, *args):
-    try:
-        columns = (args)
-        tree = ttk.Treeview(frame, columns=columns, show='headings')
-        tree.pack(side=tk.LEFT)
-        for i in args:
-            for j in range(0, len(i)):
-                if '_' in i[j]:
-                    i[j].replace('_', ' ')
-                    tree.heading(i, text='{}'.format(i))
-                    tree.column(i, minwidth=5, width=100)
-                else:
-                    tree.heading(i, text='{}'.format(i))
-                    tree.column(i, minwidth=5, width=100)
-
-        for value in datab.db.execute("SELECT * FROM {} ORDER BY {}".format(table, column)):
-            tree.insert('', tk.END, values=value)
-        tree.bind('<<TreeviewSelect>>', selection, )
-
-        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=tree.yview)
-        tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side=tk.RIGHT, fill='y')
-        return tree
-    except Exception as TreeViewError:
-        error(TreeViewError)
-        print("TreeView failed to initialise {}".format(TreeViewError))
-
-
+# ==== Create Treeviews ==================================================================
 materials_tree = tree(m_bottom_top_frame, get_materials_selection, 'materials', 'materials.ingredient', 'ingredients',
                       'quantity', 'cost')
 product_tree = tree(p_bottom_top_frame, get_products_selection, 'products', 'products.product', 'products', 'size',
