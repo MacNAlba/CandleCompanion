@@ -11,13 +11,13 @@ class Database(object):
     def create_table(self):
         try:
             self.db.connect("db.sqlite")
-            self.db.execute( "CREATE TABLE IF NOT EXISTS materials (ingredient TEXT NOT NULL COLLATE NOCASE, quantity "
-                             "INTEGER NOT NULL, cost REAL NOT NULL)")
-            self.db.execute( "CREATE TABLE IF NOT EXISTS products (product TEXT NOT NULL COLLATE NOCASE, size REAL "
-                             "NOT NULL, scent TEXT NOT NULL COLLATE NOCASE, decoration_1 TEXT COLLATE NOCASE, "
-                             "decoration_2 TEXT COLLATE NOCASE, quantity INTEGER NOT NULL, price REAL NOT NULL)")
-            self.db.execute( "CREATE TABLE IF NOT EXISTS recipes (product TEXT NOT NULL COLLATE NOCASE, wax_amount "
-                             "REAL NOT NULL, scent_amount REAL NOT NULL)")
+            self.db.execute("CREATE TABLE IF NOT EXISTS materials (ingredient TEXT NOT NULL COLLATE NOCASE, quantity "
+                            "INTEGER NOT NULL, cost REAL NOT NULL)")
+            self.db.execute("CREATE TABLE IF NOT EXISTS products (product TEXT NOT NULL COLLATE NOCASE, size REAL "
+                            "NOT NULL, scent TEXT NOT NULL COLLATE NOCASE, decoration_1 TEXT COLLATE NOCASE, "
+                            "decoration_2 TEXT COLLATE NOCASE, quantity INTEGER NOT NULL, price REAL NOT NULL)")
+            self.db.execute("CREATE TABLE IF NOT EXISTS recipes (product TEXT NOT NULL COLLATE NOCASE, wax_amount "
+                            "REAL NOT NULL, scent_amount REAL NOT NULL)")
         except Exception as DatabaseError:
             print("Database failed to initialise {}".format(DatabaseError))
         exit()
@@ -25,8 +25,8 @@ class Database(object):
     def refresh_materials(self):
         for item in main.materials_tree.get_children():
             main.materials_tree.delete(item)
-        for material in self.db.execute("SELECT * FROM materials ORDER BY materials.ingredient"):
-           main.materials_tree.insert('', tk.END, values=material)
+        for mat in self.db.execute("SELECT * FROM materials ORDER BY materials.ingredient"):
+            main.materials_tree.insert('', tk.END, values=mat)
 
     def refresh_products(self):
         for item in main.product_tree.get_children():
@@ -111,7 +111,8 @@ class Database(object):
                                     self.db.execute("INSERT INTO products VALUES(?, ?, ?, ?, ?, ?, ?)",
                                                     (str(main.p_product_entry.get()), str(main.p_size_entry.get()),
                                                      str(main.p_scent_entry.get()),
-                                                     str(main.p_decorator_1_entry.get()), str(main.p_decorator_2_entry.get()),
+                                                     str(main.p_decorator_1_entry.get()),
+                                                     str(main.p_decorator_2_entry.get()),
                                                      float(main.p_quantity_entry.get()),
                                                      float(main.p_price_entry.get())))
                                     self.db.commit()
@@ -120,7 +121,8 @@ class Database(object):
                                         text="{} x {}g {} with {} scent {} and {} for {} added".format(
                                             main.p_quantity_entry.get().lower(), main.p_size_entry.get().lower(),
                                             main.p_product_entry.get().lower(), main.p_scent_entry.get().lower(),
-                                            main.p_decorator_1_entry.get().lower(), main.p_decorator_2_entry.get().lower(),
+                                            main.p_decorator_1_entry.get().lower(),
+                                            main.p_decorator_2_entry.get().lower(),
                                             main.p_price_entry.get().lower()))
                                 else:
                                     fetch = self.cur.execute(
@@ -135,7 +137,8 @@ class Database(object):
                                     update = "UPDATE products SET quantity=? WHERE (product=? and size=? and scent=? " \
                                              "and decoration_1=? and decoration_2=? and price=?) "
                                     self.cur.execute(update, (
-                                        new_qty, main.p_product_entry.get(), main.p_size_entry.get(), main.p_scent_entry.get(),
+                                        new_qty, main.p_product_entry.get(), main.p_size_entry.get(),
+                                        main.p_scent_entry.get(),
                                         main.p_decorator_1_entry.get(), main.p_decorator_2_entry.get(),
                                         main.p_price_entry.get()))
                                     self.refresh_products()
@@ -172,7 +175,8 @@ class Database(object):
                     if float(main.r_scent_amount_entry.get()) and len(main.r_scent_amount_entry.get()) > 0:
                         exists = self.cur.execute(
                             "SELECT product FROM recipes WHERE (product=? and wax_amount=? and scent_amount=?)",
-                            (main.r_product_entry.get(), main.r_wax_entry.get(), main.r_scent_amount_entry.get())).fetchall()
+                            (main.r_product_entry.get(), main.r_wax_entry.get(),
+                             main.r_scent_amount_entry.get())).fetchall()
                         if not exists:
                             self.db.execute("INSERT INTO recipes VALUES(?, ?, ?)",
                                             (str(main.r_product_entry.get()),
@@ -220,7 +224,8 @@ class Database(object):
             query = "DELETE FROM products WHERE product=? and size=? and scent=? and decoration_1=? and " \
                     "decoration_2=? and quantity=? and price=? "
             selection = (
-                main.p_product_entry.get(), main.p_size_entry.get(), main.p_scent_entry.get(), main.p_decorator_1_entry.get(),
+                main.p_product_entry.get(), main.p_size_entry.get(), main.p_scent_entry.get(),
+                main.p_decorator_1_entry.get(),
                 main.p_decorator_2_entry.get(), main.p_quantity_entry.get(),
                 main.p_price_entry.get())
             self.cur.execute(query, selection)

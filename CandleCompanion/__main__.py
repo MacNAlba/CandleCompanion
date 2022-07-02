@@ -5,9 +5,7 @@ from tkinter import ttk
 from PIL import ImageTk, Image
 import Database as Database
 
-db = sqlite3.connect("db.sqlite")
-cur = db.cursor()
-datab = Database.Database(db, cur)
+
 
 
 # ==== Functions ========================================================================
@@ -204,85 +202,45 @@ r_bottom_bottom_frame = frame(r_bottom_frame, tk.BOTTOM)
 r_left_frame = frame(r_top_bottom_frame, tk.LEFT)
 r_right_frame = frame(r_top_bottom_frame, tk.RIGHT)
 
+
+db = sqlite3.connect("db.sqlite")
+cur = db.cursor()
+datab = Database.Database(db, cur)
 # ==== TreeView ==========================================================================
 # ==== Materials ====
-try:
-    mat_columns = ('ingredient', 'quantity', 'cost')
-    materials_tree = ttk.Treeview(m_bottom_top_frame, columns=mat_columns, show='headings')
-    materials_tree.pack(side=tk.LEFT)
+def tree(frame, selection, table, column, *args):
+    try:
+        columns = (args)
+        tree = ttk.Treeview(frame, columns=columns, show='headings')
+        tree.pack(side=tk.LEFT)
+        for i in args:
+            for j in range(0, len(i)):
+                if '_' in i[j]:
+                    i[j].replace('_', ' ')
+                    tree.heading(i, text='{}'.format(i))
+                    tree.column(i, minwidth=5, width=100)
+                else:
+                    tree.heading(i, text='{}'.format(i))
+                    tree.column(i, minwidth=5, width=100)
 
-    materials_tree.heading('ingredient', text='Ingredient')
-    materials_tree.column('ingredient', minwidth=5, width=100)
-    materials_tree.heading('quantity', text='Quantity')
-    materials_tree.column('quantity', minwidth=5, width=100)
-    materials_tree.heading('cost', text='Cost')
-    materials_tree.column('cost', minwidth=5, width=100)
+        for value in datab.db.execute("SELECT * FROM {} ORDER BY {}".format(table, column)):
+            tree.insert('', tk.END, values=value)
+        tree.bind('<<TreeviewSelect>>', selection, )
 
-    for ingredient in datab.db.execute("SELECT * FROM materials ORDER BY materials.ingredient"):
-        materials_tree.insert('', tk.END, values=ingredient)
-    materials_tree.bind('<<TreeviewSelect>>', get_materials_selection, )
+        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill='y')
+        return tree
+    except Exception as TreeViewError:
+        error(TreeViewError)
+        print("TreeView failed to initialise {}".format(TreeViewError))
 
-    scrollbar = ttk.Scrollbar(m_bottom_top_frame, orient=tk.VERTICAL, command=materials_tree.yview)
-    materials_tree.configure(yscrollcommand=scrollbar.set)
-    scrollbar.pack(side=tk.RIGHT, fill='y')
-except Exception as MaterialsTreeViewError:
-    error(MaterialsTreeViewError)
-    print("Materials TreeView failed to initialise {}".format(MaterialsTreeViewError))
-# ==== Products ====
-try:
-    prod_columns = ('product', 'size', 'scent', 'decoration_1', 'decoration_2', 'quantity', 'price')
-    product_tree = ttk.Treeview(p_bottom_top_frame, columns=prod_columns, show='headings')
-    product_tree.pack(side=tk.LEFT)
 
-    product_tree.heading('product', text='Product')
-    product_tree.column('product', minwidth=5, width=100)
-    product_tree.heading('size', text='Size')
-    product_tree.column('size', minwidth=5, width=100)
-    product_tree.heading('scent', text='Scent')
-    product_tree.column('scent', minwidth=5, width=100)
-    product_tree.heading('decoration_1', text='Decoration 1')
-    product_tree.column('decoration_1', minwidth=5, width=100)
-    product_tree.heading('decoration_2', text='Decoration 2')
-    product_tree.column('decoration_2', minwidth=5, width=100)
-    product_tree.heading('quantity', text='Quantity')
-    product_tree.column('quantity', minwidth=5, width=100)
-    product_tree.heading('price', text='Price')
-    product_tree.column('price', minwidth=5, width=100)
-
-    # noinspection PyUnboundLocalVariable
-    for product in datab.db.execute("SELECT * FROM products ORDER BY products.product"):
-        product_tree.insert('', tk.END, values=product)
-    product_tree.bind('<<TreeviewSelect>>', get_products_selection, )
-
-    scrollbar = ttk.Scrollbar(p_bottom_top_frame, orient=tk.VERTICAL, command=product_tree.yview)
-    product_tree.configure(yscrollcommand=scrollbar.set)
-    scrollbar.pack(side=tk.RIGHT, fill='y')
-except Exception as ProductsTreeViewError:
-    error(ProductsTreeViewError)
-    print("Product TreeView failed to initialise {}".format(ProductsTreeViewError))
-# ==== Recipes ====
-try:
-    rec_columns = ('product', 'wax_amount', 'scent_amount')
-    rec_tree = ttk.Treeview(r_bottom_top_frame, columns=rec_columns, show='headings')
-    rec_tree.pack(side=tk.LEFT)
-
-    rec_tree.heading('product', text='Product')
-    rec_tree.column('product', minwidth=5, width=100)
-    rec_tree.heading('wax_amount', text='Wax Amount')
-    rec_tree.column('wax_amount', minwidth=5, width=100)
-    rec_tree.heading('scent_amount', text='Scent Amount')
-    rec_tree.column('scent_amount', minwidth=5, width=100)
-
-    for product in datab.db.execute("SELECT * FROM recipes ORDER BY recipes.product"):
-        product_tree.insert('', tk.END, values=product)
-    rec_tree.bind('<<TreeviewSelect>>', get_recipes_selection, )
-
-    scrollbar = ttk.Scrollbar(r_bottom_top_frame, orient=tk.VERTICAL, command=rec_tree.yview)
-    rec_tree.configure(yscrollcommand=scrollbar.set)
-    scrollbar.pack(side=tk.RIGHT, fill='y')
-except Exception as RecipesTreeViewError:
-    error(RecipesTreeViewError)
-    print("Recipes TreeView failed to initialise {}".format(RecipesTreeViewError))
+materials_tree = tree(m_bottom_top_frame, get_materials_selection, 'materials', 'materials.ingredient', 'ingredients',
+                      'quantity', 'cost')
+product_tree = tree(p_bottom_top_frame, get_products_selection, 'products', 'products.product', 'products', 'size',
+                    'scent', 'decoration_1', 'decoration_2', 'quantity', 'price')
+rec_tree = tree(r_bottom_top_frame, get_recipes_selection, 'recipes', 'recipes.product', 'product', 'wax_amount', 'scent_amount')
 
 # ==== Main Screen =======================================================================
 # ==== Labels ====
